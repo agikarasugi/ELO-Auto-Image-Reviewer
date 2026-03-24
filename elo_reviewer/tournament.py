@@ -2,8 +2,7 @@ import random
 from dataclasses import dataclass
 from pathlib import Path
 
-from tqdm import tqdm
-
+from . import console as cm
 from .elo import EloRatings
 from .judge import Judge
 
@@ -32,42 +31,44 @@ def run_tournament(
     ratings: EloRatings,
     judge: Judge,
     rounds: int,
-    verbose: bool = False,
 ) -> list[RoundResult]:
     results: list[RoundResult] = []
 
-    with tqdm(total=rounds, desc="Tournament", unit="round") as pbar:
-        for i in range(rounds):
-            image_a, image_b = sample_pair(image_paths)
+    for i in range(rounds):
+        image_a, image_b = sample_pair(image_paths)
 
-            if verbose:
-                print(f"\nRound {i + 1}: {image_a.name}  vs  {image_b.name}")
+        cm.console.print(
+            f"[dim cyan][[/dim cyan][bold white]{i + 1}/{rounds}[/bold white][dim cyan]][/dim cyan]"
+            f" [yellow]{image_a.name}[/yellow]"
+            f" [dim]vs[/dim]"
+            f" [yellow]{image_b.name}[/yellow]"
+        )
 
-            decision, _history, used_fallback = judge.compare(image_a, image_b)
+        decision, _history, used_fallback = judge.compare(image_a, image_b)
 
-            if decision == "A":
-                winner_path, loser_path = image_a, image_b
-            else:
-                winner_path, loser_path = image_b, image_a
+        if decision == "A":
+            winner_path, loser_path = image_a, image_b
+        else:
+            winner_path, loser_path = image_b, image_a
 
-            elo_w, elo_l = ratings.update(winner_path.name, loser_path.name)
+        elo_w, elo_l = ratings.update(winner_path.name, loser_path.name)
 
-            result = RoundResult(
-                round_num=i + 1,
-                image_a=image_a.name,
-                image_b=image_b.name,
-                winner=winner_path.name,
-                loser=loser_path.name,
-                used_fallback=used_fallback,
-                elo_winner_after=elo_w,
-                elo_loser_after=elo_l,
-            )
-            results.append(result)
+        fallback_note = "  [bold red][fallback][/bold red]" if used_fallback else ""
+        cm.console.print(
+            f"  [green]winner:[/green] [bold green]{winner_path.name}[/bold green]"
+            f"  [cyan](elo: {elo_w:.1f})[/cyan]{fallback_note}"
+        )
 
-            postfix: dict = {"winner": winner_path.name[:18]}
-            if used_fallback:
-                postfix["fallback"] = "!"
-            pbar.set_postfix(postfix)
-            pbar.update(1)
+        result = RoundResult(
+            round_num=i + 1,
+            image_a=image_a.name,
+            image_b=image_b.name,
+            winner=winner_path.name,
+            loser=loser_path.name,
+            used_fallback=used_fallback,
+            elo_winner_after=elo_w,
+            elo_loser_after=elo_l,
+        )
+        results.append(result)
 
     return results

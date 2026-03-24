@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
+from rich.console import Console
 
 load_dotenv()
 
@@ -35,7 +36,6 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "Examples:\n"
             "  elo-reviewer -d ./photos --rounds 50\n"
-            "  elo-reviewer -d ./photos --rounds auto --verbose\n"
             "  elo-reviewer -d ./photos --api-base-url http://localhost:11434/v1 --api-key ollama --model llava:13b\n\n"
             "Required environment variables (or use CLI flags):\n"
             "  OPENAI_API_KEY     API key\n"
@@ -109,9 +109,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Minimum number of images required to run (hard stop). (default: 5)",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "--no-color",
         action="store_true",
-        help="Print each round's full LLM conversation to stdout.",
+        help="Disable colored output for classic terminal environments.",
     )
 
     return parser
@@ -120,6 +120,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
+
+    # Configure shared console before any output
+    from . import console as cm
+    if args.no_color:
+        cm.console = Console(no_color=True)
 
     # --- Validate images directory ---
     if not args.images_dir.exists():
@@ -153,12 +158,12 @@ def main() -> None:
     validate_image_count(images, minimum=args.min_images)
 
     n = len(images)
-    print(f"Found {n} images in {args.images_dir}")
+    cm.console.print(f"[green]Found[/green] [bold]{n}[/bold] images in [cyan]{args.images_dir}[/cyan]")
 
     # --- Resolve rounds ---
     if args.rounds == "auto":
         rounds = n * (n - 1) // 2
-        print(f"Auto rounds: {n}*({n}-1)/2 = {rounds} rounds for {n} images")
+        cm.console.print(f"[dim]Auto rounds: {n}*({n}-1)/2 = {rounds} rounds[/dim]")
     else:
         rounds = args.rounds  # already an int
 
@@ -178,26 +183,26 @@ def main() -> None:
 
     # --- Set up judge ---
     from .judge import Judge
-    judge = Judge(client=client, model=args.model, verbose=args.verbose)
+    judge = Judge(client=client, model=args.model)
 
     # --- Run tournament ---
     from .tournament import run_tournament
-    print(f"\nStarting tournament: {rounds} rounds, model={args.model}\n")
-    results = run_tournament(images, ratings, judge, rounds=rounds, verbose=args.verbose)
+    cm.console.print(f"\n[bold]Starting tournament:[/bold] {rounds} rounds, model=[cyan]{args.model}[/cyan]\n")
+    results = run_tournament(images, ratings, judge, rounds=rounds)
 
     # --- Fallback stats ---
     fallbacks = sum(1 for r in results if r.used_fallback)
     if fallbacks:
-        print(f"\nNote: {fallbacks}/{rounds} rounds used random fallback (unparseable model response).")
+        cm.console.print(f"\n[yellow]Note: {fallbacks}/{rounds} rounds used random fallback (unparseable model response).[/yellow]")
 
     # --- Write outputs ---
     from .output import print_summary_table, write_csv, write_top3_image
 
-    print()
+    cm.console.print()
     print_summary_table(ratings)
 
     csv_path = write_csv(ratings, args.output_dir)
-    print(f"\nCSV saved:   {csv_path}")
+    cm.console.print(f"\n[green]CSV saved:[/green]   [cyan]{csv_path}[/cyan]")
 
     top3_path = write_top3_image(ratings, args.images_dir, args.output_dir)
-    print(f"Top-3 image: {top3_path}")
+    cm.console.print(f"[green]Top-3 image:[/green] [cyan]{top3_path}[/cyan]")

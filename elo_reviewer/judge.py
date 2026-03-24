@@ -5,7 +5,9 @@ from pathlib import Path
 from typing import Literal
 
 import openai
+from rich.markup import escape
 
+from . import console as cm
 from .image_utils import build_image_content_block
 
 SYSTEM_PROMPT = """\
@@ -64,11 +66,9 @@ class Judge:
         self,
         client: openai.OpenAI,
         model: str,
-        verbose: bool = False,
     ) -> None:
         self.client = client
         self.model = model
-        self.verbose = verbose
 
     def _chat(
         self,
@@ -123,47 +123,40 @@ class Judge:
         try:
             reply1 = self._chat(messages)
         except openai.APIError as e:
-            if self.verbose:
-                print(f"  [API error turn 1: {e}] — using random fallback")
+            cm.console.print(f"  [bold red][API error turn 1: {escape(str(e))}] — using random fallback[/bold red]")
             decision = random.choice(["A", "B"])
             return decision, messages, True  # type: ignore[return-value]
 
         messages.append({"role": "assistant", "content": reply1})
-        if self.verbose:
-            print(f"\n  [Turn 1]\n{reply1}\n")
+        cm.console.print(f"\n  [dim cyan][Turn 1][/dim cyan]\n{escape(reply1)}\n")
 
         # Turn 2: self-review
         messages.append({"role": "user", "content": TURN2_TEXT})
         try:
             reply2 = self._chat(messages, temperature=0.3)
         except openai.APIError as e:
-            if self.verbose:
-                print(f"  [API error turn 2: {e}] — using random fallback")
+            cm.console.print(f"  [bold red][API error turn 2: {escape(str(e))}] — using random fallback[/bold red]")
             decision = random.choice(["A", "B"])
             return decision, messages, True  # type: ignore[return-value]
 
         messages.append({"role": "assistant", "content": reply2})
-        if self.verbose:
-            print(f"  [Turn 2]\n{reply2}\n")
+        cm.console.print(f"  [dim cyan][Turn 2][/dim cyan]\n{escape(reply2)}\n")
 
         # Turn 3: final decision
         messages.append({"role": "user", "content": TURN3_TEXT})
         try:
             reply3 = self._chat(messages, temperature=0.0)
         except openai.APIError as e:
-            if self.verbose:
-                print(f"  [API error turn 3: {e}] — using random fallback")
+            cm.console.print(f"  [bold red][API error turn 3: {escape(str(e))}] — using random fallback[/bold red]")
             decision = random.choice(["A", "B"])
             return decision, messages, True  # type: ignore[return-value]
 
         messages.append({"role": "assistant", "content": reply3})
-        if self.verbose:
-            print(f"  [Turn 3 — decision]\n{reply3}\n")
+        cm.console.print(f"  [dim cyan][Turn 3 — decision][/dim cyan]\n{escape(reply3)}\n")
 
         decision = _parse_decision(reply3)
         if decision is None:
-            if self.verbose:
-                print(f"  [Could not parse '{reply3}'] — using random fallback")
+            cm.console.print(f"  [yellow][Could not parse '{escape(reply3)}'] — using random fallback[/yellow]")
             decision = random.choice(["A", "B"])  # type: ignore[assignment]
             return decision, messages, True  # type: ignore[return-value]
 

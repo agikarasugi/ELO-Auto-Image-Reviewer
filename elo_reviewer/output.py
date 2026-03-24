@@ -3,9 +3,9 @@ from datetime import datetime
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
-from rich.console import Console
 from rich.table import Table
 
+from . import console as cm
 from .elo import EloRatings
 
 THUMB_W = 400
@@ -136,7 +136,6 @@ def write_top3_image(
 
 
 def print_summary_table(ratings: EloRatings) -> None:
-    console = Console()
     table = Table(title="ELO Rankings", show_header=True, header_style="bold cyan")
     table.add_column("Rank", style="bold", justify="right", width=6)
     table.add_column("Filename", no_wrap=False)
@@ -160,4 +159,4 @@ def print_summary_table(ratings: EloRatings) -> None:
             win_pct,
         )
 
-    console.print(table)
+    cm.console.print(table)
