@@ -1,4 +1,5 @@
 import random
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,6 +21,13 @@ class RoundResult:
     tokens: int
 
 
+def _fmt_duration(seconds: float) -> str:
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    m, s = divmod(int(seconds), 60)
+    return f"{m}m {s:02d}s"
+
+
 def sample_pair(image_paths: list[Path]) -> tuple[Path, Path]:
     a, b = random.sample(image_paths, 2)
     if random.random() < 0.5:
@@ -35,6 +43,7 @@ def run_tournament(
 ) -> list[RoundResult]:
     results: list[RoundResult] = []
     total_tokens = 0
+    round_times: list[float] = []
 
     for i in range(rounds):
         image_a, image_b = sample_pair(image_paths)
@@ -46,13 +55,22 @@ def run_tournament(
             f" [yellow]{image_b.name}[/yellow]"
         )
 
+        round_start = time.monotonic()
         decision, _history, used_fallback, round_tokens = judge.compare(image_a, image_b)
+        round_elapsed = time.monotonic() - round_start
+        round_times.append(round_elapsed)
         total_tokens += round_tokens
+
+        avg_time = sum(round_times) / len(round_times)
+        remaining = rounds - (i + 1)
+        eta_str = f"ETA {_fmt_duration(avg_time * remaining)}" if remaining > 0 else "done"
+        timing = f"[dim]{_fmt_duration(round_elapsed)}  avg {_fmt_duration(avg_time)}  {eta_str}[/dim]"
 
         if decision is None:
             cm.log(
                 f"  [yellow]no winner — ELO unchanged[/yellow]"
                 f"  [dim]tokens: {round_tokens:,} | total: {total_tokens:,}[/dim]"
+                f"  {timing}"
             )
             result = RoundResult(
                 round_num=i + 1,
@@ -81,6 +99,7 @@ def run_tournament(
             f"  [green]winner:[/green] [bold green]{winner_path.name}[/bold green]"
             f"  [cyan](elo: {elo_w:.1f})[/cyan]"
             f"  [dim]tokens: {round_tokens:,} | total: {total_tokens:,}[/dim]"
+            f"  {timing}"
         )
         cm.log(
             f"  [dim]"
