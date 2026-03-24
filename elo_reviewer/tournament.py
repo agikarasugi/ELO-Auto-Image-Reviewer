@@ -39,7 +39,7 @@ def run_tournament(
     for i in range(rounds):
         image_a, image_b = sample_pair(image_paths)
 
-        cm.console.print(
+        cm.log(
             f"[dim cyan][[/dim cyan][bold white]{i + 1}/{rounds}[/bold white][dim cyan]][/dim cyan]"
             f" [yellow]{image_a.name}[/yellow]"
             f" [dim]vs[/dim]"
@@ -57,7 +57,7 @@ def run_tournament(
         elo_w, elo_l = ratings.update(winner_path.name, loser_path.name)
 
         fallback_note = "  [bold red][fallback][/bold red]" if used_fallback else ""
-        cm.console.print(
+        cm.log(
             f"  [green]winner:[/green] [bold green]{winner_path.name}[/bold green]"
             f"  [cyan](elo: {elo_w:.1f})[/cyan]{fallback_note}"
             f"  [dim]tokens: {round_tokens:,} | total: {total_tokens:,}[/dim]"

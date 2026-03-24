@@ -160,3 +160,5 @@ def print_summary_table(ratings: EloRatings) -> None:
         )
 
     cm.console.print(table)
+    if cm.file_console is not None:
+        cm.file_console.print(table)

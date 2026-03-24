@@ -43,7 +43,7 @@ def validate_image_count(
             f"Add more images and try again."
         )
     if n < warn_threshold:
-        cm.console.print(
+        cm.log(
             f"[yellow]Warning: only {n} images found ({unique_pairs} unique pairs). "
             f"ELO scores will be more reliable with 10+ images.[/yellow]"
         )

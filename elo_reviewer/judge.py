@@ -130,7 +130,7 @@ class Judge:
             reply1, tokens1 = self._chat(messages)
             round_tokens += tokens1
         except openai.APIError as e:
-            cm.console.print(f"  [bold red][API error turn 1: {escape(str(e))}] — using random fallback[/bold red]")
+            cm.log(f"  [bold red][API error turn 1: {escape(str(e))}] — using random fallback[/bold red]")
             decision = random.choice(["A", "B"])
             return decision, messages, True, round_tokens  # type: ignore[return-value]
 
@@ -144,7 +144,7 @@ class Judge:
             reply2, tokens2 = self._chat(messages, temperature=0.3)
             round_tokens += tokens2
         except openai.APIError as e:
-            cm.console.print(f"  [bold red][API error turn 2: {escape(str(e))}] — using random fallback[/bold red]")
+            cm.log(f"  [bold red][API error turn 2: {escape(str(e))}] — using random fallback[/bold red]")
             decision = random.choice(["A", "B"])
             return decision, messages, True, round_tokens  # type: ignore[return-value]
 
@@ -158,7 +158,7 @@ class Judge:
             reply3, tokens3 = self._chat(messages, temperature=0.0)
             round_tokens += tokens3
         except openai.APIError as e:
-            cm.console.print(f"  [bold red][API error turn 3: {escape(str(e))}] — using random fallback[/bold red]")
+            cm.log(f"  [bold red][API error turn 3: {escape(str(e))}] — using random fallback[/bold red]")
             decision = random.choice(["A", "B"])
             return decision, messages, True, round_tokens  # type: ignore[return-value]
 
@@ -168,7 +168,7 @@ class Judge:
 
         decision = _parse_decision(reply3)
         if decision is None:
-            cm.console.print(f"  [yellow][Could not parse '{escape(reply3)}'] — using random fallback[/yellow]")
+            cm.log(f"  [yellow][Could not parse '{escape(reply3)}'] — using random fallback[/yellow]")
             decision = random.choice(["A", "B"])  # type: ignore[assignment]
             return decision, messages, True, round_tokens  # type: ignore[return-value]
 

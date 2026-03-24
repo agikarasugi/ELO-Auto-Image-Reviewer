@@ -175,6 +175,13 @@ def main() -> None:
     # --- Prepare output directory ---
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
+    # --- Open log file ---
+    from datetime import datetime
+    log_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_path = args.output_dir / f"elo_log_{log_ts}.txt"
+    log_file = open(log_path, "w", encoding="utf-8")
+    cm.file_console = Console(file=log_file)
+
     # --- Set up ELO ratings ---
     from .elo import EloRatings
     ratings = EloRatings(images, starting_elo=args.starting_elo, k_factor=args.k_factor)
@@ -192,25 +199,29 @@ def main() -> None:
 
     # --- Run tournament ---
     from .tournament import run_tournament
-    cm.console.print(f"\n[bold]Starting tournament:[/bold] {rounds} rounds, model=[cyan]{args.model}[/cyan]\n")
+    cm.log(f"\n[bold]Starting tournament:[/bold] {rounds} rounds, model=[cyan]{args.model}[/cyan]\n")
     results = run_tournament(images, ratings, judge, rounds=rounds)
 
     # --- Token and fallback stats ---
     total_tokens = sum(r.tokens for r in results)
-    cm.console.print(f"\n[dim]Total tokens used: {total_tokens:,}[/dim]")
+    cm.log(f"\n[dim]Total tokens used: {total_tokens:,}[/dim]")
 
     fallbacks = sum(1 for r in results if r.used_fallback)
     if fallbacks:
-        cm.console.print(f"[yellow]Note: {fallbacks}/{rounds} rounds used random fallback (unparseable model response).[/yellow]")
+        cm.log(f"[yellow]Note: {fallbacks}/{rounds} rounds used random fallback (unparseable model response).[/yellow]")
 
     # --- Write outputs ---
     from .output import print_summary_table, write_csv, write_top3_image
 
-    cm.console.print()
+    cm.log()
     print_summary_table(ratings)
 
     csv_path = write_csv(ratings, args.output_dir)
-    cm.console.print(f"\n[green]CSV saved:[/green]   [cyan]{csv_path}[/cyan]")
+    cm.log(f"\n[green]CSV saved:[/green]   [cyan]{csv_path}[/cyan]")
 
     top3_path = write_top3_image(ratings, args.images_dir, args.output_dir)
-    cm.console.print(f"[green]Top-3 image:[/green] [cyan]{top3_path}[/cyan]")
+    cm.log(f"[green]Top-3 image:[/green] [cyan]{top3_path}[/cyan]")
+
+    # --- Close log file ---
+    log_file.close()
+    cm.console.print(f"[green]Log saved:[/green]    [cyan]{log_path}[/cyan]")
