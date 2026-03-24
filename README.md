@@ -77,6 +77,14 @@ uv run elo-reviewer -d ./photos \
   --k-factor 16 \
   --starting-elo 1200 \
   --output-dir ./results
+
+# Use a built-in prompt template
+uv run elo-reviewer -d ./illustrations -p illustrations
+uv run elo-reviewer -d ./photos -p natural_photos
+uv run elo-reviewer -d ./designs -p tshirt_back_print
+
+# Use a custom prompt file
+uv run elo-reviewer -d ./photos -p ./my_criteria.md
 ```
 
 ### All Options
@@ -84,7 +92,8 @@ uv run elo-reviewer -d ./photos \
 ```
 usage: elo-reviewer [-h] -d DIR [-r N|auto] [--api-base-url URL]
                     [--api-key KEY] [-m MODEL] [-o DIR] [--k-factor K]
-                    [--starting-elo ELO] [--min-images N] [-v] [--no-color]
+                    [--starting-elo ELO] [--min-images N] [-p FILE] [-v]
+                    [--no-color]
 
 options:
   -d, --images-dir DIR    Directory containing images to rank
@@ -99,8 +108,43 @@ options:
   --k-factor K            ELO K-factor — sensitivity of score changes (default: 32)
   --starting-elo ELO      Initial ELO for all images (default: 1000)
   --min-images N          Minimum images required to run (default: 5)
+  -p, --prompt FILE       Markdown file whose content is used as the system
+                          prompt (evaluation criteria). Pass a built-in name
+                          (default, illustrations, natural_photos,
+                          tshirt_back_print) or a path to your own .md file.
+                          (default: built-in 'default')
   -v, --verbose           Print each round's full LLM conversation
   --no-color              Disable colored output for classic terminal environments
+```
+
+### Custom Prompts
+
+The `-p`/`--prompt` flag lets you control what the model evaluates. The file content becomes the system prompt — just describe the criteria. The multi-turn conversation structure and the final verdict instruction are always added automatically.
+
+**Built-in templates** (in `elo_reviewer/prompts/`):
+
+| Name | Focus |
+|---|---|
+| `default` | General image quality — technical, composition, visual appeal, subject clarity |
+| `illustrations` | Artwork — line quality, color harmony, style consistency, visual storytelling |
+| `natural_photos` | Photography — exposure, sharpness, noise, white balance, natural lighting |
+| `tshirt_back_print` | Cute illustration quality and suitability for T-shirt back print |
+
+**Writing your own prompt:**
+
+Create a `.md` file describing your evaluation criteria and pass its path with `-p`:
+
+```markdown
+You are an expert in evaluating product photography for e-commerce.
+Compare two product images and determine which is better for a sales listing.
+Evaluate based on:
+- Background cleanliness (white/neutral, no distractions)
+- Product visibility (fully shown, well-lit, no obscured details)
+- Professional presentation (sharp, correct exposure, appealing angle)
+```
+
+```bash
+uv run elo-reviewer -d ./product-shots -p ./ecommerce.md
 ```
 
 ## Output
