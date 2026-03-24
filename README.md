@@ -12,8 +12,9 @@ Each round:
 3. The LLM critically reviews its own reasoning for potential bias or oversights
 4. The LLM gives a final single-letter verdict: **A** or **B**
 5. ELO scores are updated — the winner gains points, the loser loses points
+   - If any API call fails or the response cannot be parsed, the round is **skipped** — no winner is declared and both images' ELO scores remain unchanged
 
-After all rounds, a ranked CSV and a top-3 visualization image are written to the output directory.
+After all rounds, a ranked CSV, a top-3 visualization image, and a plain-text log file are written to the output directory.
 
 ## Requirements
 
@@ -83,7 +84,7 @@ uv run elo-reviewer -d ./photos \
 ```
 usage: elo-reviewer [-h] -d DIR [-r N|auto] [--api-base-url URL]
                     [--api-key KEY] [-m MODEL] [-o DIR] [--k-factor K]
-                    [--starting-elo ELO] [--min-images N] [-v]
+                    [--starting-elo ELO] [--min-images N] [-v] [--no-color]
 
 options:
   -d, --images-dir DIR    Directory containing images to rank
@@ -98,7 +99,8 @@ options:
   --k-factor K            ELO K-factor — sensitivity of score changes (default: 32)
   --starting-elo ELO      Initial ELO for all images (default: 1000)
   --min-images N          Minimum images required to run (default: 5)
-  -v, --verbose           Print each round's LLM conversation
+  -v, --verbose           Print each round's full LLM conversation
+  --no-color              Disable colored output for classic terminal environments
 ```
 
 ## Output
@@ -109,10 +111,11 @@ Results are written to `--output-dir` (default: `./elo_results/`):
 |---|---|
 | `elo_results_YYYYMMDD_HHMMSS.csv` | Rankings table: filename, wins, losses, ELO score |
 | `top3_YYYYMMDD_HHMMSS.png` | Podium image showing the top 3 ranked images |
+| `elo_log_YYYYMMDD_HHMMSS.txt` | Plain-text log of all round results, token usage, and the final rankings table |
 
 Filenames are timestamped so repeated runs never overwrite previous results.
 
-A ranked summary table is also printed to the terminal after the tournament.
+A ranked summary table is also printed to the terminal after the tournament. Each round logs the competing images, winner, updated ELO, W/L record, and token usage.
 
 ### Example CSV
 
@@ -141,5 +144,5 @@ Rating update:   R_new = R_old + K * (actual - expected)
 
 - At least **5 images** are required (hard minimum). A warning is shown with fewer than 10.
 - Images are resized to a maximum of 2048px on the longest side before encoding to keep API payloads manageable.
-- If the model's response cannot be parsed, a random result is used as a fallback and flagged in the terminal output.
+- If any API call fails or the model's response cannot be parsed, the round is skipped — no winner is declared and ELO scores are unchanged. Skipped rounds are listed in a summary after the tournament.
 - Rate limit errors are retried with exponential backoff (up to 3 attempts).
