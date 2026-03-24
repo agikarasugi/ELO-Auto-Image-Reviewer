@@ -55,12 +55,21 @@ def run_tournament(
             winner_path, loser_path = image_b, image_a
 
         elo_w, elo_l = ratings.update(winner_path.name, loser_path.name)
+        stats_w = ratings.get(winner_path.name)
+        stats_l = ratings.get(loser_path.name)
 
         fallback_note = "  [bold red][fallback][/bold red]" if used_fallback else ""
         cm.log(
             f"  [green]winner:[/green] [bold green]{winner_path.name}[/bold green]"
             f"  [cyan](elo: {elo_w:.1f})[/cyan]{fallback_note}"
             f"  [dim]tokens: {round_tokens:,} | total: {total_tokens:,}[/dim]"
+        )
+        cm.log(
+            f"  [dim]"
+            f"W {winner_path.name}  elo {elo_w:.1f}  {stats_w.wins}W-{stats_w.losses}L ({stats_w.win_rate:.0f}%)"
+            f"   |   "
+            f"L {loser_path.name}  elo {elo_l:.1f}  {stats_l.wins}W-{stats_l.losses}L ({stats_l.win_rate:.0f}%)"
+            f"[/dim]"
         )
 
         result = RoundResult(
