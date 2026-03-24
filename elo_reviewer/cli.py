@@ -195,10 +195,13 @@ def main() -> None:
     cm.console.print(f"\n[bold]Starting tournament:[/bold] {rounds} rounds, model=[cyan]{args.model}[/cyan]\n")
     results = run_tournament(images, ratings, judge, rounds=rounds)
 
-    # --- Fallback stats ---
+    # --- Token and fallback stats ---
+    total_tokens = sum(r.tokens for r in results)
+    cm.console.print(f"\n[dim]Total tokens used: {total_tokens:,}[/dim]")
+
     fallbacks = sum(1 for r in results if r.used_fallback)
     if fallbacks:
-        cm.console.print(f"\n[yellow]Note: {fallbacks}/{rounds} rounds used random fallback (unparseable model response).[/yellow]")
+        cm.console.print(f"[yellow]Note: {fallbacks}/{rounds} rounds used random fallback (unparseable model response).[/yellow]")
 
     # --- Write outputs ---
     from .output import print_summary_table, write_csv, write_top3_image

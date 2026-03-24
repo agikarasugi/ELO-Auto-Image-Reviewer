@@ -17,6 +17,7 @@ class RoundResult:
     used_fallback: bool
     elo_winner_after: float
     elo_loser_after: float
+    tokens: int
 
 
 def sample_pair(image_paths: list[Path]) -> tuple[Path, Path]:
@@ -33,6 +34,7 @@ def run_tournament(
     rounds: int,
 ) -> list[RoundResult]:
     results: list[RoundResult] = []
+    total_tokens = 0
 
     for i in range(rounds):
         image_a, image_b = sample_pair(image_paths)
@@ -44,7 +46,8 @@ def run_tournament(
             f" [yellow]{image_b.name}[/yellow]"
         )
 
-        decision, _history, used_fallback = judge.compare(image_a, image_b)
+        decision, _history, used_fallback, round_tokens = judge.compare(image_a, image_b)
+        total_tokens += round_tokens
 
         if decision == "A":
             winner_path, loser_path = image_a, image_b
@@ -57,6 +60,7 @@ def run_tournament(
         cm.console.print(
             f"  [green]winner:[/green] [bold green]{winner_path.name}[/bold green]"
             f"  [cyan](elo: {elo_w:.1f})[/cyan]{fallback_note}"
+            f"  [dim]tokens: {round_tokens:,} | total: {total_tokens:,}[/dim]"
         )
 
         result = RoundResult(
@@ -68,6 +72,7 @@ def run_tournament(
             used_fallback=used_fallback,
             elo_winner_after=elo_w,
             elo_loser_after=elo_l,
+            tokens=round_tokens,
         )
         results.append(result)
 
