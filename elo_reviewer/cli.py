@@ -109,6 +109,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Minimum number of images required to run (hard stop). (default: 5)",
     )
     parser.add_argument(
+        "-p", "--prompt",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help=(
+            "Markdown prompt template file controlling what the model evaluates. "
+            "Pass a built-in name (default, illustrations, natural_photos) or a "
+            "path to your own .md file. (default: built-in 'default')"
+        ),
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Print each round's full LLM conversation to stdout.",
@@ -193,9 +204,26 @@ def main() -> None:
         base_url=args.api_base_url,
     )
 
+    # --- Load prompt template ---
+    from .prompt_loader import default_prompt_path, load_prompt, resolve_prompt_path
+
+    if args.prompt is None:
+        prompt_path = default_prompt_path()
+    else:
+        prompt_path = resolve_prompt_path(args.prompt)
+
+    try:
+        prompt_template = load_prompt(prompt_path)
+    except FileNotFoundError as e:
+        parser.error(str(e))
+    except ValueError as e:
+        parser.error(str(e))
+
+    cm.console.print(f"[dim]Prompt:  {prompt_template.name}[/dim]")
+
     # --- Set up judge ---
     from .judge import Judge
-    judge = Judge(client=client, model=args.model, verbose=args.verbose)
+    judge = Judge(client=client, model=args.model, prompt=prompt_template, verbose=args.verbose)
 
     # --- Run tournament ---
     from .tournament import run_tournament

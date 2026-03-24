@@ -8,14 +8,9 @@ from rich.markup import escape
 
 from . import console as cm
 from .image_utils import build_image_content_block
+from .prompt_loader import PromptTemplate
 
-SYSTEM_PROMPT = """\
-You are an expert image quality judge. Your task is to compare two images \
-and determine which is superior. Evaluate based on:
-- Technical quality (sharpness, focus, exposure, noise)
-- Composition (framing, balance, rule of thirds)
-- Visual appeal (color, contrast, aesthetic coherence)
-- Subject clarity (is the subject well-presented?)
+SYSTEM_SUFFIX = """\
 
 You will ultimately give a final answer of exactly one capital letter: 'A' or 'B'.\
 """
@@ -44,6 +39,8 @@ Review your analysis critically. Consider:
 Revise your assessment if needed, then summarize your final reasoning.\
 """
 
+# Fixed parsing instruction — not user-customisable so the tool can always
+# extract a clear A/B verdict regardless of the evaluation template.
 TURN3_TEXT = """\
 Final answer only. Which image is better overall?
 Respond with a single capital letter: A or B\
@@ -65,10 +62,12 @@ class Judge:
         self,
         client: openai.OpenAI,
         model: str,
+        prompt: PromptTemplate,
         verbose: bool = False,
     ) -> None:
         self.client = client
         self.model = model
+        self.prompt = prompt
         self.verbose = verbose
 
     def _chat(
@@ -111,7 +110,7 @@ class Judge:
             tokens: total tokens consumed across all API calls this round
         """
         messages: list[dict] = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": self.prompt.system + SYSTEM_SUFFIX},
         ]
         round_tokens = 0
 
@@ -149,7 +148,7 @@ class Judge:
         if self.verbose:
             cm.console.print(f"  [dim cyan][Turn 2][/dim cyan]\n{escape(reply2)}\n")
 
-        # Turn 3: final decision
+        # Turn 3: fixed parsing instruction — extract final verdict
         messages.append({"role": "user", "content": TURN3_TEXT})
         try:
             reply3, tokens3 = self._chat(messages, temperature=0.0)
