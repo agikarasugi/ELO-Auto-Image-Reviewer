@@ -66,9 +66,11 @@ class Judge:
         self,
         client: openai.OpenAI,
         model: str,
+        verbose: bool = False,
     ) -> None:
         self.client = client
         self.model = model
+        self.verbose = verbose
 
     def _chat(
         self,
@@ -128,7 +130,8 @@ class Judge:
             return decision, messages, True  # type: ignore[return-value]
 
         messages.append({"role": "assistant", "content": reply1})
-        cm.console.print(f"\n  [dim cyan][Turn 1][/dim cyan]\n{escape(reply1)}\n")
+        if self.verbose:
+            cm.console.print(f"\n  [dim cyan][Turn 1][/dim cyan]\n{escape(reply1)}\n")
 
         # Turn 2: self-review
         messages.append({"role": "user", "content": TURN2_TEXT})
@@ -140,7 +143,8 @@ class Judge:
             return decision, messages, True  # type: ignore[return-value]
 
         messages.append({"role": "assistant", "content": reply2})
-        cm.console.print(f"  [dim cyan][Turn 2][/dim cyan]\n{escape(reply2)}\n")
+        if self.verbose:
+            cm.console.print(f"  [dim cyan][Turn 2][/dim cyan]\n{escape(reply2)}\n")
 
         # Turn 3: final decision
         messages.append({"role": "user", "content": TURN3_TEXT})
@@ -152,7 +156,8 @@ class Judge:
             return decision, messages, True  # type: ignore[return-value]
 
         messages.append({"role": "assistant", "content": reply3})
-        cm.console.print(f"  [dim cyan][Turn 3 — decision][/dim cyan]\n{escape(reply3)}\n")
+        if self.verbose:
+            cm.console.print(f"  [dim cyan][Turn 3 — decision][/dim cyan]\n{escape(reply3)}\n")
 
         decision = _parse_decision(reply3)
         if decision is None:

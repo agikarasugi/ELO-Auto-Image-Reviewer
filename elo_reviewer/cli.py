@@ -109,6 +109,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Minimum number of images required to run (hard stop). (default: 5)",
     )
     parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Print each round's full LLM conversation to stdout.",
+    )
+    parser.add_argument(
         "--no-color",
         action="store_true",
         help="Disable colored output for classic terminal environments.",
@@ -183,7 +188,7 @@ def main() -> None:
 
     # --- Set up judge ---
     from .judge import Judge
-    judge = Judge(client=client, model=args.model)
+    judge = Judge(client=client, model=args.model, verbose=args.verbose)
 
     # --- Run tournament ---
     from .tournament import run_tournament
