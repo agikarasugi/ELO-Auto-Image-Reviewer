@@ -1,0 +1,19 @@
+[project]
+name = "elo-auto-image-reviewer"
+version = "0.1.0"
+description = "ELO-based automatic image reviewer using a multimodal LLM"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "openai>=1.30.0",
+    "pillow>=10.3.0",
+    "tqdm>=4.66.0",
+    "rich>=13.7.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+elo-reviewer = "elo_reviewer.cli:main"
+
+[tool.uv]
+package = true
