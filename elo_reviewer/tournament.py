@@ -12,11 +12,11 @@ class RoundResult:
     round_num: int
     image_a: str
     image_b: str
-    winner: str
-    loser: str
+    winner: str | None
+    loser: str | None
     used_fallback: bool
-    elo_winner_after: float
-    elo_loser_after: float
+    elo_winner_after: float | None
+    elo_loser_after: float | None
     tokens: int
 
 
@@ -49,6 +49,25 @@ def run_tournament(
         decision, _history, used_fallback, round_tokens = judge.compare(image_a, image_b)
         total_tokens += round_tokens
 
+        if decision is None:
+            cm.log(
+                f"  [yellow]no winner — ELO unchanged[/yellow]"
+                f"  [dim]tokens: {round_tokens:,} | total: {total_tokens:,}[/dim]"
+            )
+            result = RoundResult(
+                round_num=i + 1,
+                image_a=image_a.name,
+                image_b=image_b.name,
+                winner=None,
+                loser=None,
+                used_fallback=True,
+                elo_winner_after=None,
+                elo_loser_after=None,
+                tokens=round_tokens,
+            )
+            results.append(result)
+            continue
+
         if decision == "A":
             winner_path, loser_path = image_a, image_b
         else:
@@ -58,10 +77,9 @@ def run_tournament(
         stats_w = ratings.get(winner_path.name)
         stats_l = ratings.get(loser_path.name)
 
-        fallback_note = "  [bold red][fallback][/bold red]" if used_fallback else ""
         cm.log(
             f"  [green]winner:[/green] [bold green]{winner_path.name}[/bold green]"
-            f"  [cyan](elo: {elo_w:.1f})[/cyan]{fallback_note}"
+            f"  [cyan](elo: {elo_w:.1f})[/cyan]"
             f"  [dim]tokens: {round_tokens:,} | total: {total_tokens:,}[/dim]"
         )
         cm.log(
@@ -78,7 +96,7 @@ def run_tournament(
             image_b=image_b.name,
             winner=winner_path.name,
             loser=loser_path.name,
-            used_fallback=used_fallback,
+            used_fallback=False,
             elo_winner_after=elo_w,
             elo_loser_after=elo_l,
             tokens=round_tokens,

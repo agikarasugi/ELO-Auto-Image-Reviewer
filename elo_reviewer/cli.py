@@ -207,14 +207,10 @@ def main() -> None:
     cm.log(f"\n[dim]Total tokens used: {total_tokens:,}[/dim]")
 
     fallback_results = [r for r in results if r.used_fallback]
+    cm.log(f"\n[dim]Skipped rounds (fallback): {len(fallback_results)}/{rounds}[/dim]")
     if fallback_results:
-        cm.log(f"\n[yellow]Fallback rounds ({len(fallback_results)}/{rounds} used random decision):[/yellow]")
         for r in fallback_results:
-            cm.log(
-                f"  [yellow]round {r.round_num:>4}  "
-                f"{r.image_a}  vs  {r.image_b}  "
-                f"→ {r.winner} (random)[/yellow]"
-            )
+            cm.log(f"  [yellow]round {r.round_num:>4}  {r.image_a}  vs  {r.image_b}[/yellow]")
 
     # --- Write outputs ---
     from .output import print_summary_table, write_csv, write_top3_image
