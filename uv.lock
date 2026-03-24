@@ -60,7 +60,6 @@ dependencies = [
     { name = "pillow" },
     { name = "python-dotenv" },
     { name = "rich" },
-    { name = "tqdm" },
 ]
 
 [package.metadata]
@@ -69,7 +68,6 @@ requires-dist = [
     { name = "pillow", specifier = ">=10.3.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "rich", specifier = ">=13.7.0" },
-    { name = "tqdm", specifier = ">=4.66.0" },
 ]
 
 [[package]]

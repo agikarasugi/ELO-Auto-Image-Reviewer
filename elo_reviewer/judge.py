@@ -1,11 +1,12 @@
-import random
 import re
 import time
 from pathlib import Path
 from typing import Literal
 
 import openai
+from rich.markup import escape
 
+from . import console as cm
 from .image_utils import build_image_content_block
 
 SYSTEM_PROMPT = """\
@@ -74,7 +75,7 @@ class Judge:
         self,
         messages: list[dict],
         temperature: float | None = None,
-    ) -> str:
+    ) -> tuple[str, int]:
         kwargs: dict = {"model": self.model, "messages": messages}
         if temperature is not None:
             kwargs["temperature"] = temperature
@@ -83,7 +84,9 @@ class Judge:
         for attempt in range(max_retries):
             try:
                 response = self.client.chat.completions.create(**kwargs)
-                return response.choices[0].message.content or ""
+                content = response.choices[0].message.content or ""
+                tokens = response.usage.total_tokens if response.usage else 0
+                return content, tokens
             except openai.RateLimitError:
                 if attempt < max_retries - 1:
                     wait = 2 ** attempt
@@ -97,7 +100,7 @@ class Judge:
         self,
         image_a: Path,
         image_b: Path,
-    ) -> tuple[Literal["A", "B"], list[dict], bool]:
+    ) -> tuple[Literal["A", "B"] | None, list[dict], bool, int]:
         """
         Run a 3-turn comparison conversation.
 
@@ -105,10 +108,12 @@ class Judge:
             decision: 'A' or 'B'
             history: full message history
             used_fallback: True if parse failed and random choice was used
+            tokens: total tokens consumed across all API calls this round
         """
         messages: list[dict] = [
             {"role": "system", "content": SYSTEM_PROMPT},
         ]
+        round_tokens = 0
 
         # Turn 1: show both images and ask for analysis
         turn1_content = [
@@ -121,50 +126,45 @@ class Judge:
         messages.append({"role": "user", "content": turn1_content})
 
         try:
-            reply1 = self._chat(messages)
+            reply1, tokens1 = self._chat(messages)
+            round_tokens += tokens1
         except openai.APIError as e:
-            if self.verbose:
-                print(f"  [API error turn 1: {e}] — using random fallback")
-            decision = random.choice(["A", "B"])
-            return decision, messages, True  # type: ignore[return-value]
+            cm.log(f"  [bold red][API error turn 1: {escape(str(e))}] — skipping round[/bold red]")
+            return None, messages, True, round_tokens
 
         messages.append({"role": "assistant", "content": reply1})
         if self.verbose:
-            print(f"\n  [Turn 1]\n{reply1}\n")
+            cm.console.print(f"\n  [dim cyan][Turn 1][/dim cyan]\n{escape(reply1)}\n")
 
         # Turn 2: self-review
         messages.append({"role": "user", "content": TURN2_TEXT})
         try:
-            reply2 = self._chat(messages, temperature=0.3)
+            reply2, tokens2 = self._chat(messages, temperature=0.3)
+            round_tokens += tokens2
         except openai.APIError as e:
-            if self.verbose:
-                print(f"  [API error turn 2: {e}] — using random fallback")
-            decision = random.choice(["A", "B"])
-            return decision, messages, True  # type: ignore[return-value]
+            cm.log(f"  [bold red][API error turn 2: {escape(str(e))}] — skipping round[/bold red]")
+            return None, messages, True, round_tokens
 
         messages.append({"role": "assistant", "content": reply2})
         if self.verbose:
-            print(f"  [Turn 2]\n{reply2}\n")
+            cm.console.print(f"  [dim cyan][Turn 2][/dim cyan]\n{escape(reply2)}\n")
 
         # Turn 3: final decision
         messages.append({"role": "user", "content": TURN3_TEXT})
         try:
-            reply3 = self._chat(messages, temperature=0.0)
+            reply3, tokens3 = self._chat(messages, temperature=0.0)
+            round_tokens += tokens3
         except openai.APIError as e:
-            if self.verbose:
-                print(f"  [API error turn 3: {e}] — using random fallback")
-            decision = random.choice(["A", "B"])
-            return decision, messages, True  # type: ignore[return-value]
+            cm.log(f"  [bold red][API error turn 3: {escape(str(e))}] — skipping round[/bold red]")
+            return None, messages, True, round_tokens
 
         messages.append({"role": "assistant", "content": reply3})
         if self.verbose:
-            print(f"  [Turn 3 — decision]\n{reply3}\n")
+            cm.console.print(f"  [dim cyan][Turn 3 — decision][/dim cyan]\n{escape(reply3)}\n")
 
         decision = _parse_decision(reply3)
         if decision is None:
-            if self.verbose:
-                print(f"  [Could not parse '{reply3}'] — using random fallback")
-            decision = random.choice(["A", "B"])  # type: ignore[assignment]
-            return decision, messages, True  # type: ignore[return-value]
+            cm.log(f"  [yellow][Could not parse '{escape(reply3)}'] — skipping round[/yellow]")
+            return None, messages, True, round_tokens
 
-        return decision, messages, False
+        return decision, messages, False, round_tokens

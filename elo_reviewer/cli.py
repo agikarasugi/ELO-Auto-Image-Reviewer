@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
+from rich.console import Console
 
 load_dotenv()
 
@@ -35,7 +36,6 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "Examples:\n"
             "  elo-reviewer -d ./photos --rounds 50\n"
-            "  elo-reviewer -d ./photos --rounds auto --verbose\n"
             "  elo-reviewer -d ./photos --api-base-url http://localhost:11434/v1 --api-key ollama --model llava:13b\n\n"
             "Required environment variables (or use CLI flags):\n"
             "  OPENAI_API_KEY     API key\n"
@@ -113,6 +113,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print each round's full LLM conversation to stdout.",
     )
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable colored output for classic terminal environments.",
+    )
 
     return parser
 
@@ -120,6 +125,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
+
+    # Configure shared console before any output
+    from . import console as cm
+    if args.no_color:
+        cm.console = Console(no_color=True)
 
     # --- Validate images directory ---
     if not args.images_dir.exists():
@@ -153,17 +163,24 @@ def main() -> None:
     validate_image_count(images, minimum=args.min_images)
 
     n = len(images)
-    print(f"Found {n} images in {args.images_dir}")
+    cm.console.print(f"[green]Found[/green] [bold]{n}[/bold] images in [cyan]{args.images_dir}[/cyan]")
 
     # --- Resolve rounds ---
     if args.rounds == "auto":
         rounds = n * (n - 1) // 2
-        print(f"Auto rounds: {n}*({n}-1)/2 = {rounds} rounds for {n} images")
+        cm.console.print(f"[dim]Auto rounds: {n}*({n}-1)/2 = {rounds} rounds[/dim]")
     else:
         rounds = args.rounds  # already an int
 
     # --- Prepare output directory ---
     args.output_dir.mkdir(parents=True, exist_ok=True)
+
+    # --- Open log file ---
+    from datetime import datetime
+    log_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_path = args.output_dir / f"elo_log_{log_ts}.txt"
+    log_file = open(log_path, "w", encoding="utf-8")
+    cm.file_console = Console(file=log_file)
 
     # --- Set up ELO ratings ---
     from .elo import EloRatings
@@ -182,22 +199,31 @@ def main() -> None:
 
     # --- Run tournament ---
     from .tournament import run_tournament
-    print(f"\nStarting tournament: {rounds} rounds, model={args.model}\n")
-    results = run_tournament(images, ratings, judge, rounds=rounds, verbose=args.verbose)
+    cm.log(f"\n[bold]Starting tournament:[/bold] {rounds} rounds, model=[cyan]{args.model}[/cyan]\n")
+    results = run_tournament(images, ratings, judge, rounds=rounds)
 
-    # --- Fallback stats ---
-    fallbacks = sum(1 for r in results if r.used_fallback)
-    if fallbacks:
-        print(f"\nNote: {fallbacks}/{rounds} rounds used random fallback (unparseable model response).")
+    # --- Token and fallback stats ---
+    total_tokens = sum(r.tokens for r in results)
+    cm.log(f"\n[dim]Total tokens used: {total_tokens:,}[/dim]")
+
+    fallback_results = [r for r in results if r.used_fallback]
+    cm.log(f"\n[dim]Skipped rounds (fallback): {len(fallback_results)}/{rounds}[/dim]")
+    if fallback_results:
+        for r in fallback_results:
+            cm.log(f"  [yellow]round {r.round_num:>4}  {r.image_a}  vs  {r.image_b}[/yellow]")
 
     # --- Write outputs ---
     from .output import print_summary_table, write_csv, write_top3_image
 
-    print()
+    cm.log()
     print_summary_table(ratings)
 
     csv_path = write_csv(ratings, args.output_dir)
-    print(f"\nCSV saved:   {csv_path}")
+    cm.log(f"\n[green]CSV saved:[/green]   [cyan]{csv_path}[/cyan]")
 
     top3_path = write_top3_image(ratings, args.images_dir, args.output_dir)
-    print(f"Top-3 image: {top3_path}")
+    cm.log(f"[green]Top-3 image:[/green] [cyan]{top3_path}[/cyan]")
+
+    # --- Close log file ---
+    log_file.close()
+    cm.console.print(f"[green]Log saved:[/green]    [cyan]{log_path}[/cyan]")

@@ -3,6 +3,8 @@ from pathlib import Path
 
 from PIL import Image
 
+from . import console as cm
+
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 MIME_TYPES: dict[str, str] = {
@@ -41,9 +43,9 @@ def validate_image_count(
             f"Add more images and try again."
         )
     if n < warn_threshold:
-        print(
-            f"Warning: only {n} images found ({unique_pairs} unique pairs). "
-            f"ELO scores will be more reliable with 10+ images."
+        cm.log(
+            f"[yellow]Warning: only {n} images found ({unique_pairs} unique pairs). "
+            f"ELO scores will be more reliable with 10+ images.[/yellow]"
         )
 
 
