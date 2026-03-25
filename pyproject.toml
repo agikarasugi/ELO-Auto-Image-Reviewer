@@ -3,7 +3,8 @@ name = "elo-auto-image-reviewer"
 version = "0.1.0"
 description = "ELO-based automatic image reviewer using a multimodal LLM"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
     "openai>=1.30.0",
@@ -11,6 +12,9 @@ dependencies = [
     "rich>=13.7.0",
     "python-dotenv>=1.0.0",
 ]
+
+[tool.setuptools]
+packages = ["elo_reviewer"]
 
 [project.scripts]
 elo-reviewer = "elo_reviewer.cli:main"
